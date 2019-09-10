@@ -1,0 +1,8 @@
+FROM rg.fr-par.scw.cloud/scwserverlessruntimes/core:v1.2.2
+
+ENV PORT=8080
+ENV SCW_UPSTREAM_PORT=8081
+ENV SCW_HANDLER_IS_BINARY=true
+ENV SCW_HANDLER_PATH=/home/app/function/handler
+
+RUN mkdir /home/app/function
