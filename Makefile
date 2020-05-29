@@ -13,6 +13,7 @@ build:
 	go build -o runtime main.go
 
 lint:
+	command golint || (cd /tmp ; go get -u golang.org/x/lint/golint)
 	go list ./... | grep -v /vendor/ | xargs -L1 golint -set_exit_status
 
 build_container:
