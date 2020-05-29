@@ -14,7 +14,7 @@ build:
 	go build -o runtime main.go
 
 lint:
-	command golint || (cd /tmp ; go install golang.org/x/lint/golint)
+	command golint || (cd /tmp ; go install -i golang.org/x/lint/golint)
 	go list ./... | grep -v /vendor/ | xargs -L1 $(GOBIN)/golint -set_exit_status
 
 build_container:
