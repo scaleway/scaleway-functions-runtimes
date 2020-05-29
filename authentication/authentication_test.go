@@ -126,12 +126,26 @@ func setUpAndTestAuthentication(token string) error {
 	return testAuthentication(token)
 }
 
+func setUpAndTestAuthenticationOld(token string) error {
+	setUpEnvironmentVariables()
+	return testAuthentication(token)
+}
+
 func testAuthentication(token string) error {
-	req := &http.Request{
-		Header: http.Header{},
-	}
+	req := newRequest()
+	req.Header.Set("SCW-Functions-Token", token)
+	return Authenticate(req)
+}
+
+func testAuthenticationOld(token string) error {
+	req := newRequest()
 	req.Header.Set("SCW_FUNCTIONS_TOKEN", token)
 	return Authenticate(req)
+}
+
+func newRequest() *http.Request {
+	request, _ := http.NewRequest(http.MethodGet, "/", nil)
+	return request
 }
 
 // ==== Test ==== //
@@ -182,6 +196,12 @@ func TestAuthenticate(t *testing.T) {
 
 	t.Run("valid authentication for Application ID", func(t *testing.T) {
 		if err := setUpAndTestAuthentication(fixtureTokenApplication); err != nil {
+			t.Errorf("Authenticate(), received error %v", err)
+		}
+	})
+
+	t.Run("valid authentication for Application ID with old header", func(t *testing.T) {
+		if err := setUpAndTestAuthenticationOld(fixtureTokenApplication); err != nil {
 			t.Errorf("Authenticate(), received error %v", err)
 		}
 	})

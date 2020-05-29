@@ -83,7 +83,10 @@ func Authenticate(req *http.Request) (err error) {
 	}
 
 	// Check that request holds an authentication token
-	requestToken := req.Header.Get("SCW_FUNCTIONS_TOKEN")
+	requestToken := req.Header.Get("SCW-Functions-Token")
+	if requestToken == "" {
+		requestToken = req.Header.Get("SCW_FUNCTIONS_TOKEN")
+	}
 	if requestToken == "" {
 		return errorEmptyRequestToken
 	}
