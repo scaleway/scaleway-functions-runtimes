@@ -47,26 +47,29 @@ func init() {
 
 func initEnv() {
 	isPublicFunction = os.Getenv("SCW_PUBLIC") == "true"
-	applicationID = os.Getenv("SCW_APPLICATION_ID")
-	namespaceID = os.Getenv("SCW_NAMESPACE_ID")
 
-	publicKeyPem := os.Getenv("SCW_PUBLIC_KEY")
-	if publicKeyPem == "" {
-		return
-	}
+	if !isPublicFunction {
+		applicationID = os.Getenv("SCW_APPLICATION_ID")
+		namespaceID = os.Getenv("SCW_NAMESPACE_ID")
 
-	block, _ := pem.Decode([]byte(publicKeyPem))
-	if block == nil {
-		return
-	}
+		publicKeyPem := os.Getenv("SCW_PUBLIC_KEY")
+		if publicKeyPem == "" {
+			return
+		}
 
-	parsedKey, err := x509.ParsePKCS1PublicKey(block.Bytes)
-	if err != nil {
-		// Print additional error
-		log.Print(err.Error())
-		return
+		block, _ := pem.Decode([]byte(publicKeyPem))
+		if block == nil {
+			return
+		}
+
+		parsedKey, err := x509.ParsePKCS1PublicKey(block.Bytes)
+		if err != nil {
+			// Print additional error
+			log.Print(err.Error())
+			return
+		}
+		publicKey = parsedKey
 	}
-	publicKey = parsedKey
 }
 
 // Authenticate incoming request based on multiple factors:
