@@ -1,8 +1,8 @@
 package authentication
 
 import (
+	"crypto/rsa"
 	"crypto/x509"
-	"encoding/json"
 	"encoding/pem"
 	"errors"
 	"log"
@@ -33,6 +33,42 @@ var (
 	errorInvalidNamespace   = errors.New("namespace ID was not provided")
 )
 
+// ENV should not change during runtime
+var (
+	isPublicFunction bool
+	publicKey        *rsa.PublicKey
+	applicationID    string
+	namespaceID      string
+)
+
+func init() {
+	initEnv()
+}
+
+func initEnv() {
+	isPublicFunction = os.Getenv("SCW_PUBLIC") == "true"
+	applicationID = os.Getenv("SCW_APPLICATION_ID")
+	namespaceID = os.Getenv("SCW_NAMESPACE_ID")
+
+	publicKeyPem := os.Getenv("SCW_PUBLIC_KEY")
+	if publicKeyPem == "" {
+		return
+	}
+
+	block, _ := pem.Decode([]byte(publicKeyPem))
+	if block == nil {
+		return
+	}
+
+	parsedKey, err := x509.ParsePKCS1PublicKey(block.Bytes)
+	if err != nil {
+		// Print additional error
+		log.Print(err.Error())
+		return
+	}
+	publicKey = parsedKey
+}
+
 // Authenticate incoming request based on multiple factors:
 // - 1: Whether the function's privacy has been set to private, if public, just leave this middleware
 // - 2: Get the public key injected in this function runtime (done automatically by Scaleway)
@@ -42,8 +78,7 @@ var (
 // - 6: Both FunctionID and NamespaceID are injected via environment variables by Scaleway
 // ---  so we have to check the authenticity of the incoming token by comparing the claims
 func Authenticate(req *http.Request) (err error) {
-	isPublicFunction := os.Getenv("SCW_PUBLIC")
-	if isPublicFunction == "true" {
+	if isPublicFunction {
 		return
 	}
 
@@ -53,21 +88,7 @@ func Authenticate(req *http.Request) (err error) {
 		return errorEmptyRequestToken
 	}
 
-	// Retrieve Public Key used to parse JWT
-	publicKey := os.Getenv("SCW_PUBLIC_KEY")
-	if publicKey == "" {
-		return errorInvalidPublicKey
-	}
-
-	block, _ := pem.Decode([]byte(publicKey))
-	if block == nil {
-		return errorInvalidPublicKey
-	}
-
-	parsedKey, err := x509.ParsePKCS1PublicKey(block.Bytes)
-	if err != nil || parsedKey == nil {
-		// Print additional error
-		log.Print(err)
+	if publicKey == nil {
 		return errorInvalidPublicKey
 	}
 
@@ -85,8 +106,6 @@ func Authenticate(req *http.Request) (err error) {
 	}
 	applicationClaims := claims.ApplicationsClaims[0]
 
-	applicationID := os.Getenv("SCW_APPLICATION_ID")
-	namespaceID := os.Getenv("SCW_NAMESPACE_ID")
 	if applicationID == "" {
 		return errorInvalidApplication
 	} else if namespaceID == "" {

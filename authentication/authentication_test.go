@@ -118,6 +118,7 @@ func setUpEnvironmentVariables() {
 	os.Setenv("SCW_PUBLIC_KEY", fixturePublicKeyEncoded)
 	os.Setenv("SCW_APPLICATION_ID", fixtureApplicationID)
 	os.Setenv("SCW_NAMESPACE_ID", fixtureNamespaceID)
+	initEnv()
 }
 
 func setUpAndTestAuthentication(token string) error {
@@ -138,6 +139,7 @@ func testAuthentication(token string) error {
 func TestAuthenticate(t *testing.T) {
 	t.Run("function is public", func(t *testing.T) {
 		os.Setenv("SCW_PUBLIC", "true")
+		initEnv()
 		req := &http.Request{}
 		if err := Authenticate(req); err != nil {
 			t.Errorf("Authenticate(), received error %v", err)
@@ -146,6 +148,7 @@ func TestAuthenticate(t *testing.T) {
 
 	t.Run("request token not provided", func(t *testing.T) {
 		os.Setenv("SCW_PUBLIC", "false")
+		initEnv()
 		req := &http.Request{}
 		if err := Authenticate(req); err != errorEmptyRequestToken {
 			t.Errorf("Authenticate(), received error %v, expected %v", err, errorEmptyRequestToken)
@@ -154,6 +157,7 @@ func TestAuthenticate(t *testing.T) {
 
 	t.Run("missing public key", func(t *testing.T) {
 		os.Setenv("SCW_PUBLIC", "false")
+		initEnv()
 		req := &http.Request{
 			Header: http.Header{},
 		}
@@ -166,6 +170,7 @@ func TestAuthenticate(t *testing.T) {
 	t.Run("invalid public key", func(t *testing.T) {
 		os.Setenv("SCW_PUBLIC", "false")
 		os.Setenv("SCW_PUBLIC_KEY", "invalid public key")
+		initEnv()
 		req := &http.Request{
 			Header: http.Header{},
 		}
@@ -190,6 +195,7 @@ func TestAuthenticate(t *testing.T) {
 	t.Run("claims do not match injected application ID", func(t *testing.T) {
 		setUpEnvironmentVariables()
 		os.Setenv("SCW_APPLICATION_ID", "another-app-id")
+		initEnv()
 		if err := testAuthentication(fixtureTokenApplication); err != errorInvalidClaims {
 			t.Errorf("Authenticate(), got error %v, expected %v", err, errorInvalidClaims)
 		}
@@ -198,6 +204,7 @@ func TestAuthenticate(t *testing.T) {
 	t.Run("claims do not match injected namespace ID", func(t *testing.T) {
 		setUpEnvironmentVariables()
 		os.Setenv("SCW_NAMESPACE_ID", "another-namespace-id")
+		initEnv()
 		if err := testAuthentication(fixtureTokenNamespace); err != errorInvalidClaims {
 			t.Errorf("Authenticate(), got error %v, expected %v", err, errorInvalidClaims)
 		}
