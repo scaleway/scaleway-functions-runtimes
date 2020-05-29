@@ -12,7 +12,7 @@ import (
 	"testing"
 	"time"
 
-	jwt "github.com/dgrijalva/jwt-go"
+	"github.com/dgrijalva/jwt-go"
 )
 
 var (
@@ -120,12 +120,12 @@ func setUpEnvironmentVariables() {
 	os.Setenv("SCW_NAMESPACE_ID", fixtureNamespaceID)
 }
 
-func setUpAndTestAuthentication(token string, t *testing.T) error {
+func setUpAndTestAuthentication(token string) error {
 	setUpEnvironmentVariables()
-	return testAuthentication(token, t)
+	return testAuthentication(token)
 }
 
-func testAuthentication(token string, t *testing.T) error {
+func testAuthentication(token string) error {
 	req := &http.Request{
 		Header: http.Header{},
 	}
@@ -176,13 +176,13 @@ func TestAuthenticate(t *testing.T) {
 	})
 
 	t.Run("valid authentication for Application ID", func(t *testing.T) {
-		if err := setUpAndTestAuthentication(fixtureTokenApplication, t); err != nil {
+		if err := setUpAndTestAuthentication(fixtureTokenApplication); err != nil {
 			t.Errorf("Authenticate(), received error %v", err)
 		}
 	})
 
 	t.Run("valid authentication for Namespace ID", func(t *testing.T) {
-		if err := setUpAndTestAuthentication(fixtureTokenNamespace, t); err != nil {
+		if err := setUpAndTestAuthentication(fixtureTokenNamespace); err != nil {
 			t.Errorf("Authenticate(), received error %v", err)
 		}
 	})
@@ -190,7 +190,7 @@ func TestAuthenticate(t *testing.T) {
 	t.Run("claims do not match injected application ID", func(t *testing.T) {
 		setUpEnvironmentVariables()
 		os.Setenv("SCW_APPLICATION_ID", "another-app-id")
-		if err := testAuthentication(fixtureTokenApplication, t); err != errorInvalidClaims {
+		if err := testAuthentication(fixtureTokenApplication); err != errorInvalidClaims {
 			t.Errorf("Authenticate(), got error %v, expected %v", err, errorInvalidClaims)
 		}
 	})
@@ -198,7 +198,7 @@ func TestAuthenticate(t *testing.T) {
 	t.Run("claims do not match injected namespace ID", func(t *testing.T) {
 		setUpEnvironmentVariables()
 		os.Setenv("SCW_NAMESPACE_ID", "another-namespace-id")
-		if err := testAuthentication(fixtureTokenNamespace, t); err != errorInvalidClaims {
+		if err := testAuthentication(fixtureTokenNamespace); err != errorInvalidClaims {
 			t.Errorf("Authenticate(), got error %v, expected %v", err, errorInvalidClaims)
 		}
 	})
