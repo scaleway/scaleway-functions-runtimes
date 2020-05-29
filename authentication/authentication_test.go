@@ -154,7 +154,7 @@ func TestAuthenticate(t *testing.T) {
 	t.Run("function is public", func(t *testing.T) {
 		os.Setenv("SCW_PUBLIC", "true")
 		initEnv()
-		req := &http.Request{}
+		req := newRequest()
 		if err := Authenticate(req); err != nil {
 			t.Errorf("Authenticate(), received error %v", err)
 		}
@@ -163,7 +163,7 @@ func TestAuthenticate(t *testing.T) {
 	t.Run("request token not provided", func(t *testing.T) {
 		os.Setenv("SCW_PUBLIC", "false")
 		initEnv()
-		req := &http.Request{}
+		req := newRequest()
 		if err := Authenticate(req); err != errorEmptyRequestToken {
 			t.Errorf("Authenticate(), received error %v, expected %v", err, errorEmptyRequestToken)
 		}
@@ -172,9 +172,7 @@ func TestAuthenticate(t *testing.T) {
 	t.Run("missing public key", func(t *testing.T) {
 		os.Setenv("SCW_PUBLIC", "false")
 		initEnv()
-		req := &http.Request{
-			Header: http.Header{},
-		}
+		req := newRequest()
 		req.Header.Set("SCW_FUNCTIONS_TOKEN", "test-token")
 		if err := Authenticate(req); err != errorInvalidPublicKey {
 			t.Errorf("Authenticate(), received error %v, expected %v", err, errorInvalidPublicKey)
@@ -185,9 +183,7 @@ func TestAuthenticate(t *testing.T) {
 		os.Setenv("SCW_PUBLIC", "false")
 		os.Setenv("SCW_PUBLIC_KEY", "invalid public key")
 		initEnv()
-		req := &http.Request{
-			Header: http.Header{},
-		}
+		req := newRequest()
 		req.Header.Set("SCW_FUNCTIONS_TOKEN", "test-token")
 		if err := Authenticate(req); err != errorInvalidPublicKey {
 			t.Errorf("Authenticate(), received error %v, expected %v", err, errorInvalidPublicKey)
