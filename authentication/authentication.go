@@ -72,29 +72,18 @@ func Authenticate(req *http.Request) (err error) {
 	}
 
 	// Parse JWT and retrieve claims
-	claims := jwt.MapClaims{}
-
-	_, err = jwt.ParseWithClaims(requestToken, claims, func(token *jwt.Token) (i interface{}, e error) {
-		return parsedKey, nil
+	claims := &Claims{}
+	_, err = jwt.ParseWithClaims(requestToken, claims, func(*jwt.Token) (interface{}, error) {
+		return publicKey, nil
 	})
 	if err != nil {
 		return
 	}
 
-	marshalledClaims, err := json.Marshal(claims["application_claim"])
-	if err != nil {
-		return
-	}
-
-	parsedClaims := []ApplicationClaim{}
-	if err = json.Unmarshal(marshalledClaims, &parsedClaims); err != nil {
-		return
-	}
-
-	if len(parsedClaims) == 0 {
+	if len(claims.ApplicationsClaims) == 0 {
 		return errorInvalidClaims
 	}
-	applicationClaims := parsedClaims[0]
+	applicationClaims := claims.ApplicationsClaims[0]
 
 	applicationID := os.Getenv("SCW_APPLICATION_ID")
 	namespaceID := os.Getenv("SCW_NAMESPACE_ID")
