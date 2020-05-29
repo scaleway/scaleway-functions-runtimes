@@ -1,4 +1,4 @@
-FROM golang:1.13.0-alpine AS build-env
+FROM golang:1.13.11-alpine3.11 AS build-env
 LABEL intermediate=true
 
 COPY ./ /home/build
@@ -6,10 +6,9 @@ WORKDIR /home/build
 RUN go build -o /go/bin/runtime main.go
 
 # Final stage
-FROM alpine
+FROM alpine:3.11
 
-RUN apk update
-RUN apk add ca-certificates && rm -rf /var/cache/apk/*
+RUN apk add --no-cache ca-certificates
 
 ENV PORT=8080
 ENV SCW_UPSTREAM_HOST="http://127.0.0.1"
