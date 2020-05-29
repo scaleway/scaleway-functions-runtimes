@@ -31,9 +31,10 @@ var (
 
 // ==== Test Set Up - Initialize public key, and generate test token ==== //
 
-func init() {
+func TestMain(m *testing.M) {
 	setUpPublicKey()
 	setUpTestToken()
+	os.Exit(m.Run())
 }
 
 func setUpPublicKey() {
