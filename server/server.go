@@ -1,27 +1,25 @@
 package server
 
 import (
-	"errors"
+	"encoding/json"
 	"fmt"
-	"github.com/scaleway/functions-runtime/authentication"
-	"github.com/scaleway/functions-runtime/events"
-	"github.com/scaleway/functions-runtime/handler"
-	"github.com/scaleway/functions-runtime/utils"
+	"io"
 	"log"
 	"net/http"
 	"os"
 	"strconv"
+
+	"github.com/scaleway/functions-runtime/authentication"
+	"github.com/scaleway/functions-runtime/events"
+	"github.com/scaleway/functions-runtime/handler"
 )
 
 const (
-	defaultPort = 8080
+	defaultPort         = 8080
 	defaultUpstreamHost = "http://127.0.0.1"
 	defaultUpstreamPort = 8081
-	headerTriggerType = "SCW_TRIGGER_TYPE"
+	headerTriggerType   = "SCW_TRIGGER_TYPE"
 )
-
-var errorInvalidResponseBody = errors.New("Unable to transform HTTP response body")
-
 
 // Configure function Invoker from environment variables
 func setUpFunctionInvoker() (*handler.FunctionInvoker, error) {
@@ -66,27 +64,22 @@ func Start() error {
 		port = defaultPort
 	}
 
-	s := &http.Server{
-		Addr:           fmt.Sprintf(":%d", port),
-		MaxHeaderBytes: 1 << 20, // Max header of 1MB
-	}
-
 	requestHandler, err := buildRequestHandler()
 	if err != nil {
 		// TODO: FORMAT ERROR
 		return err
 	}
 
-	http.HandleFunc("/", requestHandler)
+	s := &http.Server{
+		Addr:           fmt.Sprintf(":%d", port),
+		MaxHeaderBytes: 1 << 20, // Max header of 1MB
+		Handler:        http.HandlerFunc(requestHandler),
+		// NOTE: we should either set timeouts or make explicit we don't need them
+		// see https://ieftimov.com/post/make-resilient-golang-net-http-servers-using-timeouts-deadlines-context-cancellation/
+	}
 	log.Fatal(s.ListenAndServe())
 
 	return nil
-}
-
-// Helper function to write HTTP response with given Status Code and Response body
-func writeResponse(response http.ResponseWriter, statusCode int, body string) {
-	response.WriteHeader(statusCode)
-	response.Write([]byte(body))
 }
 
 func buildRequestHandler() (func(http.ResponseWriter, *http.Request), error) {
@@ -111,42 +104,43 @@ func buildRequestHandler() (func(http.ResponseWriter, *http.Request), error) {
 		// Authenticate function, if an error occurs, do not execute the handler
 		if err := authentication.Authenticate(request); err != nil {
 			log.Print(err)
-			writeResponse(response, http.StatusNotFound, "")
+			http.NotFound(response, request) // NOTE: why not found? should be a proper middleware and handle 401/403
 			return
 		}
 
 		// 2: Check event publisher
 		triggerType, err := events.GetTriggerType(request.Header.Get(headerTriggerType))
 		if err != nil {
-			writeResponse(response, http.StatusBadRequest, err.Error())
+			http.Error(response, err.Error(), http.StatusBadRequest)
 			return
 		}
 
 		// 3: Format event and context
 		event, err := events.FormatEvent(request, triggerType)
 		if err != nil {
-			writeResponse(response, http.StatusInternalServerError, err.Error())
+			http.Error(response, err.Error(), http.StatusInternalServerError)
 			return
 		}
 		context := events.GetExecutionContext()
 
 		// 4: Execute Handler Based on runtime
 		handlerResponse, err := fnInvoker.Execute(event, context)
+		defer handlerResponse.Close()
 		if err != nil {
-			writeResponse(response, http.StatusInternalServerError, err.Error())
+			http.Error(response, err.Error(), http.StatusInternalServerError)
 			return
 		}
 
 		// Do not try to format HTTP response if trigger is NOT of type HTTP (would be pointless as nobody is waiting for the response)
 		if triggerType != events.TriggerTypeHTTP {
-			writeResponse(response, http.StatusOK, "executed properly")
+			io.WriteString(response, "executed properly") // for a trigger 201 Created might be better, so we default to 200
 			return
 		}
 
 		// 5: Get statusCode, response body, and headers
 		handlerRes, err := handler.GetResponse(handlerResponse)
 		if err != nil {
-			writeResponse(response, http.StatusInternalServerError, err.Error())
+			http.Error(response, err.Error(), http.StatusInternalServerError)
 			return
 		}
 
@@ -156,13 +150,15 @@ func buildRequestHandler() (func(http.ResponseWriter, *http.Request), error) {
 			response.Header().Set(key, value)
 		}
 
-		// Manage the case where user returns either a string (or stringified JSON) response body, or any other type
-		responseBody, err := utils.GetStringFromInterface(handlerRes.Body)
-		if err != nil {
-			writeResponse(response, http.StatusInternalServerError, errorInvalidResponseBody.Error())
-			return
+		response.WriteHeader(handlerRes.StatusCode)
+		// when lambda returns a string as body it expects to return it without json encoding
+		// NOTE: this should be improved by setting a proper content-type in the lambda
+		if handlerRes.Body[0] == '"' {
+			var s string
+			json.Unmarshal(handlerRes.Body, &s)
+			io.WriteString(response, s)
+		} else {
+			response.Write(handlerRes.Body)
 		}
-
-		writeResponse(response, handlerRes.StatusCode, responseBody)
 	}, nil
 }

@@ -2,19 +2,21 @@ package handler
 
 import (
 	"encoding/json"
+	"io"
 	"net/http"
 )
 
 // ResponseHTTP - Type for HTTP triggers response emitted by function handlers
-type ResponseHTTP struct{
-	StatusCode int `json:"statusCode"`
-	Body interface{} `json:"body"`
-	Headers map[string]string `json:"headers"`
+type ResponseHTTP struct {
+	StatusCode int               `json:"statusCode"`
+	Body       json.RawMessage   `json:"body"`
+	Headers    map[string]string `json:"headers"`
 }
 
 // GetResponse - Transform a response string into an HTTP Response structure
-func GetResponse(response string) (handlerResponse *ResponseHTTP, err error) {
-	if err := json.Unmarshal([]byte(response), &handlerResponse); err != nil {
+func GetResponse(response io.Reader) (*ResponseHTTP, error) {
+	handlerResponse := &ResponseHTTP{}
+	if err := json.NewDecoder(response).Decode(handlerResponse); err != nil {
 		return nil, ErrorInvalidHTTPResponseFormat
 	}
 
@@ -23,5 +25,5 @@ func GetResponse(response string) (handlerResponse *ResponseHTTP, err error) {
 		handlerResponse.StatusCode = http.StatusOK
 	}
 
-	return
+	return handlerResponse, nil
 }
