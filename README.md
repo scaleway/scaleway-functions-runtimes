@@ -107,7 +107,7 @@ In order to configure `core-runtime` to use your "Language Specific Runtime", yo
 
 | variable name | description |
 |----------|-------------|
-| SCW_HANDLER_NAME |  Exported function to use as a handler (e.g. `handl` for a node.js function with a `module.exports.handke` handler) |
+| SCW_HANDLER_NAME |  Exported function to use as a handler (e.g. `handle` for a node.js function with a `module.exports.handle` handler) |
 | SCW_HANDLER_PATH | Absolute path to your handler file (e.g. `/home/app/function/handler` or `/home/app/function/handler.js`) |
 | SCW_RUNTIME_BINARY | Absolute path to the binary of the language you wish to use to execute your runtime (e.g. `/usr/local/bin/node` or `/usr/local/bin/python`) |
 | SCW_RUNTIME_BRIDGE | Absolute Path to your custom-runtime entrypoint (e.g. `/home/app/myruntime.js`) |
