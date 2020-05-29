@@ -26,11 +26,11 @@ type Claims struct {
 }
 
 var (
-	errorInvalidClaims      = errors.New("Invalid Claims")
-	errorInvalidPublicKey   = errors.New("Invalid public key")
-	errorEmptyRequestToken  = errors.New("Authentication token was not provided in the request")
-	errorInvalidApplication = errors.New("Application ID was not provided")
-	errorInvalidNamespace   = errors.New("Namespace ID was not provided")
+	errorInvalidClaims      = errors.New("invalid claims")
+	errorInvalidPublicKey   = errors.New("invalid public key")
+	errorEmptyRequestToken  = errors.New("authentication token was not provided in the request")
+	errorInvalidApplication = errors.New("application ID was not provided")
+	errorInvalidNamespace   = errors.New("namespace ID was not provided")
 )
 
 // Authenticate incoming request based on multiple factors:
