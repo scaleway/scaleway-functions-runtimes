@@ -128,7 +128,7 @@ func setUpAndTestAuthentication(token string) error {
 
 func setUpAndTestAuthenticationOld(token string) error {
 	setUpEnvironmentVariables()
-	return testAuthentication(token)
+	return testAuthenticationOld(token)
 }
 
 func testAuthentication(token string) error {
