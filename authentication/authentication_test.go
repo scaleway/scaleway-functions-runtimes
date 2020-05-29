@@ -16,17 +16,18 @@ import (
 )
 
 var (
-	fixturePrivateKey       *rsa.PrivateKey
-	fixturePublicKey        *rsa.PublicKey
-	fixturePublicKeyEncoded string
-	fixtureTokenApplication string
-	fixtureTokenNamespace   string
-	fixtureApplicationID    = "app-id"
-	fixtureNamespaceID      = "namespace-id"
-	fixtureIssuer           = "scaleway"
-	fixtureSubject          = "token"
-	fixtureService          = "functions"
-	fixtureExpirationDate   = time.Now().Add(time.Hour)
+	fixturePrivateKey         *rsa.PrivateKey
+	fixturePublicKey          *rsa.PublicKey
+	fixturePublicKeyEncoded   string
+	fixtureTokenApplication   string
+	fixtureTokenNamespace     string
+	fixtureTokenTooManyClaims string
+	fixtureApplicationID      = "app-id"
+	fixtureNamespaceID        = "namespace-id"
+	fixtureIssuer             = "scaleway"
+	fixtureSubject            = "token"
+	fixtureService            = "functions"
+	fixtureExpirationDate     = time.Now().Add(time.Hour)
 )
 
 // ==== Test Set Up - Initialize public key, and generate test token ==== //
@@ -65,10 +66,17 @@ func setUpTestToken() {
 			ApplicationID: fixtureApplicationID,
 		},
 	}
-
 	namespaceClaim := []ApplicationClaim{
 		{
 			NamespaceID: fixtureNamespaceID,
+		},
+	}
+	manyClaims := []ApplicationClaim{
+		{
+			NamespaceID: fixtureNamespaceID,
+		},
+		{
+			ApplicationID: fixtureApplicationID,
 		},
 	}
 
@@ -98,14 +106,32 @@ func setUpTestToken() {
 		},
 	}
 
+	tooManyClaims := Claims{
+		manyClaims,
+		jwt.StandardClaims{
+			Issuer:    fixtureIssuer,
+			Subject:   fixtureSubject,
+			Audience:  fixtureService,
+			ExpiresAt: fixtureExpirationDate.Unix(),
+			NotBefore: time.Now().Unix(),
+			IssuedAt:  time.Now().Unix(),
+			Id:        "test-namespace",
+		},
+	}
+
 	tokenApplication := jwt.NewWithClaims(jwt.SigningMethodRS256, appClaims)
 	tokenNamespace := jwt.NewWithClaims(jwt.SigningMethodRS256, namespaceClaims)
+	tokenTooManyClaims := jwt.NewWithClaims(jwt.SigningMethodRS256, tooManyClaims)
 	// sign token
 	fixtureTokenApplication, err = tokenApplication.SignedString(fixturePrivateKey)
 	if err != nil {
 		log.Fatalf("Unable to sign application test token, got error: %v", err)
 	}
 	fixtureTokenNamespace, err = tokenNamespace.SignedString(fixturePrivateKey)
+	if err != nil {
+		log.Fatalf("Unable to sign namespace test token, got error: %v", err)
+	}
+	fixtureTokenTooManyClaims, err = tokenTooManyClaims.SignedString(fixturePrivateKey)
 	if err != nil {
 		log.Fatalf("Unable to sign namespace test token, got error: %v", err)
 	}
@@ -222,6 +248,13 @@ func TestAuthenticate(t *testing.T) {
 		os.Setenv("SCW_NAMESPACE_ID", "another-namespace-id")
 		initEnv()
 		if err := testAuthentication(fixtureTokenNamespace); err != errorInvalidClaims {
+			t.Errorf("Authenticate(), got error %v, expected %v", err, errorInvalidClaims)
+		}
+	})
+
+	t.Run("token cannot contain multiple claims", func(t *testing.T) {
+		setUpEnvironmentVariables()
+		if err := testAuthentication(fixtureTokenTooManyClaims); err != errorInvalidClaims {
 			t.Errorf("Authenticate(), got error %v, expected %v", err, errorInvalidClaims)
 		}
 	})

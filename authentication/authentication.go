@@ -109,6 +109,9 @@ func Authenticate(req *http.Request) (err error) {
 
 	if len(claims.ApplicationsClaims) == 0 {
 		return errorInvalidClaims
+	} else if len(claims.ApplicationsClaims) > 1 {
+		log.Println("token with more claims than expected - please upgrade your runtime")
+		return errorInvalidClaims
 	}
 	applicationClaims := claims.ApplicationsClaims[0]
 
