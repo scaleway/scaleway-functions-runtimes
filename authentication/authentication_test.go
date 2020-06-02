@@ -12,28 +12,30 @@ import (
 	"testing"
 	"time"
 
-	jwt "github.com/dgrijalva/jwt-go"
+	"github.com/dgrijalva/jwt-go"
 )
 
 var (
-	fixturePrivateKey       *rsa.PrivateKey
-	fixturePublicKey        *rsa.PublicKey
-	fixturePublicKeyEncoded string
-	fixtureTokenApplication string
-	fixtureTokenNamespace   string
-	fixtureApplicationID    = "app-id"
-	fixtureNamespaceID      = "namespace-id"
-	fixtureIssuer           = "scaleway"
-	fixtureSubject          = "token"
-	fixtureService          = "functions"
-	fixtureExpirationDate   = time.Now().Add(time.Hour)
+	fixturePrivateKey         *rsa.PrivateKey
+	fixturePublicKey          *rsa.PublicKey
+	fixturePublicKeyEncoded   string
+	fixtureTokenApplication   string
+	fixtureTokenNamespace     string
+	fixtureTokenTooManyClaims string
+	fixtureApplicationID      = "app-id"
+	fixtureNamespaceID        = "namespace-id"
+	fixtureIssuer             = "scaleway"
+	fixtureSubject            = "token"
+	fixtureService            = "functions"
+	fixtureExpirationDate     = time.Now().Add(time.Hour)
 )
 
 // ==== Test Set Up - Initialize public key, and generate test token ==== //
 
-func init() {
+func TestMain(m *testing.M) {
 	setUpPublicKey()
 	setUpTestToken()
+	os.Exit(m.Run())
 }
 
 func setUpPublicKey() {
@@ -64,10 +66,17 @@ func setUpTestToken() {
 			ApplicationID: fixtureApplicationID,
 		},
 	}
-
 	namespaceClaim := []ApplicationClaim{
 		{
 			NamespaceID: fixtureNamespaceID,
+		},
+	}
+	manyClaims := []ApplicationClaim{
+		{
+			NamespaceID: fixtureNamespaceID,
+		},
+		{
+			ApplicationID: fixtureApplicationID,
 		},
 	}
 
@@ -97,14 +106,32 @@ func setUpTestToken() {
 		},
 	}
 
+	tooManyClaims := Claims{
+		manyClaims,
+		jwt.StandardClaims{
+			Issuer:    fixtureIssuer,
+			Subject:   fixtureSubject,
+			Audience:  fixtureService,
+			ExpiresAt: fixtureExpirationDate.Unix(),
+			NotBefore: time.Now().Unix(),
+			IssuedAt:  time.Now().Unix(),
+			Id:        "test-namespace",
+		},
+	}
+
 	tokenApplication := jwt.NewWithClaims(jwt.SigningMethodRS256, appClaims)
 	tokenNamespace := jwt.NewWithClaims(jwt.SigningMethodRS256, namespaceClaims)
+	tokenTooManyClaims := jwt.NewWithClaims(jwt.SigningMethodRS256, tooManyClaims)
 	// sign token
 	fixtureTokenApplication, err = tokenApplication.SignedString(fixturePrivateKey)
 	if err != nil {
 		log.Fatalf("Unable to sign application test token, got error: %v", err)
 	}
 	fixtureTokenNamespace, err = tokenNamespace.SignedString(fixturePrivateKey)
+	if err != nil {
+		log.Fatalf("Unable to sign namespace test token, got error: %v", err)
+	}
+	fixtureTokenTooManyClaims, err = tokenTooManyClaims.SignedString(fixturePrivateKey)
 	if err != nil {
 		log.Fatalf("Unable to sign namespace test token, got error: %v", err)
 	}
@@ -117,19 +144,34 @@ func setUpEnvironmentVariables() {
 	os.Setenv("SCW_PUBLIC_KEY", fixturePublicKeyEncoded)
 	os.Setenv("SCW_APPLICATION_ID", fixtureApplicationID)
 	os.Setenv("SCW_NAMESPACE_ID", fixtureNamespaceID)
+	initEnv()
 }
 
-func setUpAndTestAuthentication(token string, t *testing.T) error {
+func setUpAndTestAuthentication(token string) error {
 	setUpEnvironmentVariables()
-	return testAuthentication(token, t)
+	return testAuthentication(token)
 }
 
-func testAuthentication(token string, t *testing.T) error {
-	req := &http.Request{
-		Header: http.Header{},
-	}
+func setUpAndTestAuthenticationOld(token string) error {
+	setUpEnvironmentVariables()
+	return testAuthenticationOld(token)
+}
+
+func testAuthentication(token string) error {
+	req := newRequest()
+	req.Header.Set("SCW-Functions-Token", token)
+	return Authenticate(req)
+}
+
+func testAuthenticationOld(token string) error {
+	req := newRequest()
 	req.Header.Set("SCW_FUNCTIONS_TOKEN", token)
 	return Authenticate(req)
+}
+
+func newRequest() *http.Request {
+	request, _ := http.NewRequest(http.MethodGet, "/", nil)
+	return request
 }
 
 // ==== Test ==== //
@@ -137,7 +179,8 @@ func testAuthentication(token string, t *testing.T) error {
 func TestAuthenticate(t *testing.T) {
 	t.Run("function is public", func(t *testing.T) {
 		os.Setenv("SCW_PUBLIC", "true")
-		req := &http.Request{}
+		initEnv()
+		req := newRequest()
 		if err := Authenticate(req); err != nil {
 			t.Errorf("Authenticate(), received error %v", err)
 		}
@@ -145,7 +188,8 @@ func TestAuthenticate(t *testing.T) {
 
 	t.Run("request token not provided", func(t *testing.T) {
 		os.Setenv("SCW_PUBLIC", "false")
-		req := &http.Request{}
+		initEnv()
+		req := newRequest()
 		if err := Authenticate(req); err != errorEmptyRequestToken {
 			t.Errorf("Authenticate(), received error %v, expected %v", err, errorEmptyRequestToken)
 		}
@@ -153,9 +197,8 @@ func TestAuthenticate(t *testing.T) {
 
 	t.Run("missing public key", func(t *testing.T) {
 		os.Setenv("SCW_PUBLIC", "false")
-		req := &http.Request{
-			Header: http.Header{},
-		}
+		initEnv()
+		req := newRequest()
 		req.Header.Set("SCW_FUNCTIONS_TOKEN", "test-token")
 		if err := Authenticate(req); err != errorInvalidPublicKey {
 			t.Errorf("Authenticate(), received error %v, expected %v", err, errorInvalidPublicKey)
@@ -165,9 +208,8 @@ func TestAuthenticate(t *testing.T) {
 	t.Run("invalid public key", func(t *testing.T) {
 		os.Setenv("SCW_PUBLIC", "false")
 		os.Setenv("SCW_PUBLIC_KEY", "invalid public key")
-		req := &http.Request{
-			Header: http.Header{},
-		}
+		initEnv()
+		req := newRequest()
 		req.Header.Set("SCW_FUNCTIONS_TOKEN", "test-token")
 		if err := Authenticate(req); err != errorInvalidPublicKey {
 			t.Errorf("Authenticate(), received error %v, expected %v", err, errorInvalidPublicKey)
@@ -175,13 +217,19 @@ func TestAuthenticate(t *testing.T) {
 	})
 
 	t.Run("valid authentication for Application ID", func(t *testing.T) {
-		if err := setUpAndTestAuthentication(fixtureTokenApplication, t); err != nil {
+		if err := setUpAndTestAuthentication(fixtureTokenApplication); err != nil {
+			t.Errorf("Authenticate(), received error %v", err)
+		}
+	})
+
+	t.Run("valid authentication for Application ID with old header", func(t *testing.T) {
+		if err := setUpAndTestAuthenticationOld(fixtureTokenApplication); err != nil {
 			t.Errorf("Authenticate(), received error %v", err)
 		}
 	})
 
 	t.Run("valid authentication for Namespace ID", func(t *testing.T) {
-		if err := setUpAndTestAuthentication(fixtureTokenNamespace, t); err != nil {
+		if err := setUpAndTestAuthentication(fixtureTokenNamespace); err != nil {
 			t.Errorf("Authenticate(), received error %v", err)
 		}
 	})
@@ -189,7 +237,8 @@ func TestAuthenticate(t *testing.T) {
 	t.Run("claims do not match injected application ID", func(t *testing.T) {
 		setUpEnvironmentVariables()
 		os.Setenv("SCW_APPLICATION_ID", "another-app-id")
-		if err := testAuthentication(fixtureTokenApplication, t); err != errorInvalidClaims {
+		initEnv()
+		if err := testAuthentication(fixtureTokenApplication); err != errorInvalidClaims {
 			t.Errorf("Authenticate(), got error %v, expected %v", err, errorInvalidClaims)
 		}
 	})
@@ -197,7 +246,15 @@ func TestAuthenticate(t *testing.T) {
 	t.Run("claims do not match injected namespace ID", func(t *testing.T) {
 		setUpEnvironmentVariables()
 		os.Setenv("SCW_NAMESPACE_ID", "another-namespace-id")
-		if err := testAuthentication(fixtureTokenNamespace, t); err != errorInvalidClaims {
+		initEnv()
+		if err := testAuthentication(fixtureTokenNamespace); err != errorInvalidClaims {
+			t.Errorf("Authenticate(), got error %v, expected %v", err, errorInvalidClaims)
+		}
+	})
+
+	t.Run("token cannot contain multiple claims", func(t *testing.T) {
+		setUpEnvironmentVariables()
+		if err := testAuthentication(fixtureTokenTooManyClaims); err != errorInvalidClaims {
 			t.Errorf("Authenticate(), got error %v, expected %v", err, errorInvalidClaims)
 		}
 	})
