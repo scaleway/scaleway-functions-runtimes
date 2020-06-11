@@ -150,14 +150,20 @@ func buildRequestHandler() (func(http.ResponseWriter, *http.Request), error) {
 		}
 
 		response.WriteHeader(handlerRes.StatusCode)
-		// when lambda returns a string as body it expects to return it without json encoding
-		// NOTE: this should be improved by setting a proper content-type in the lambda
-		if handlerRes.Body[0] == '"' {
-			var s string
-			json.Unmarshal(handlerRes.Body, &s)
-			io.WriteString(response, s)
-		} else {
-			response.Write(handlerRes.Body)
-		}
+		passHandlerResponse(response, handlerRes.Body)
 	}, nil
+}
+
+func passHandlerResponse(w http.ResponseWriter, body json.RawMessage) {
+	if len(body) == 0 {
+		return
+	}
+	// when lambda returns a string as body it expects to return it without json encoding
+	if body[0] == '"' {
+		var s string
+		json.Unmarshal(body, &s)
+		io.WriteString(w, s)
+	} else {
+		w.Write(body)
+	}
 }
