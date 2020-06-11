@@ -182,7 +182,7 @@ func TestAuthenticate(t *testing.T) {
 		os.Setenv("SCW_PUBLIC", "true")
 		initEnv()
 		req := newRequest()
-		if err := Authenticate(nil, req); err != nil {
+		if err := Authenticate(httptest.NewRecorder(), req); err != nil {
 			t.Errorf("Authenticate(), received error %v", err)
 		}
 	})
@@ -191,7 +191,7 @@ func TestAuthenticate(t *testing.T) {
 		os.Setenv("SCW_PUBLIC", "false")
 		initEnv()
 		req := newRequest()
-		if err := Authenticate(nil, req); err != errorEmptyRequestToken {
+		if err := Authenticate(httptest.NewRecorder(), req); err != errorEmptyRequestToken {
 			t.Errorf("Authenticate(), received error %v, expected %v", err, errorEmptyRequestToken)
 		}
 	})
@@ -201,7 +201,7 @@ func TestAuthenticate(t *testing.T) {
 		initEnv()
 		req := newRequest()
 		req.Header.Set("SCW_FUNCTIONS_TOKEN", "test-token")
-		if err := Authenticate(nil, req); err != errorInvalidPublicKey {
+		if err := Authenticate(httptest.NewRecorder(), req); err != errorInvalidPublicKey {
 			t.Errorf("Authenticate(), received error %v, expected %v", err, errorInvalidPublicKey)
 		}
 	})
@@ -212,7 +212,7 @@ func TestAuthenticate(t *testing.T) {
 		initEnv()
 		req := newRequest()
 		req.Header.Set("SCW_FUNCTIONS_TOKEN", "test-token")
-		if err := Authenticate(nil, req); err != errorInvalidPublicKey {
+		if err := Authenticate(httptest.NewRecorder(), req); err != errorInvalidPublicKey {
 			t.Errorf("Authenticate(), received error %v, expected %v", err, errorInvalidPublicKey)
 		}
 	})
