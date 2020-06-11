@@ -8,6 +8,7 @@ import (
 	"encoding/pem"
 	"log"
 	"net/http"
+	"net/http/httptest"
 	"os"
 	"testing"
 	"time"
@@ -160,13 +161,13 @@ func setUpAndTestAuthenticationOld(token string) error {
 func testAuthentication(token string) error {
 	req := newRequest()
 	req.Header.Set("SCW-Functions-Token", token)
-	return Authenticate(req)
+	return Authenticate(httptest.NewRecorder(), req)
 }
 
 func testAuthenticationOld(token string) error {
 	req := newRequest()
 	req.Header.Set("SCW_FUNCTIONS_TOKEN", token)
-	return Authenticate(req)
+	return Authenticate(httptest.NewRecorder(), req)
 }
 
 func newRequest() *http.Request {
@@ -181,7 +182,7 @@ func TestAuthenticate(t *testing.T) {
 		os.Setenv("SCW_PUBLIC", "true")
 		initEnv()
 		req := newRequest()
-		if err := Authenticate(req); err != nil {
+		if err := Authenticate(nil, req); err != nil {
 			t.Errorf("Authenticate(), received error %v", err)
 		}
 	})
@@ -190,7 +191,7 @@ func TestAuthenticate(t *testing.T) {
 		os.Setenv("SCW_PUBLIC", "false")
 		initEnv()
 		req := newRequest()
-		if err := Authenticate(req); err != errorEmptyRequestToken {
+		if err := Authenticate(nil, req); err != errorEmptyRequestToken {
 			t.Errorf("Authenticate(), received error %v, expected %v", err, errorEmptyRequestToken)
 		}
 	})
@@ -200,7 +201,7 @@ func TestAuthenticate(t *testing.T) {
 		initEnv()
 		req := newRequest()
 		req.Header.Set("SCW_FUNCTIONS_TOKEN", "test-token")
-		if err := Authenticate(req); err != errorInvalidPublicKey {
+		if err := Authenticate(nil, req); err != errorInvalidPublicKey {
 			t.Errorf("Authenticate(), received error %v, expected %v", err, errorInvalidPublicKey)
 		}
 	})
@@ -211,7 +212,7 @@ func TestAuthenticate(t *testing.T) {
 		initEnv()
 		req := newRequest()
 		req.Header.Set("SCW_FUNCTIONS_TOKEN", "test-token")
-		if err := Authenticate(req); err != errorInvalidPublicKey {
+		if err := Authenticate(nil, req); err != errorInvalidPublicKey {
 			t.Errorf("Authenticate(), received error %v, expected %v", err, errorInvalidPublicKey)
 		}
 	})

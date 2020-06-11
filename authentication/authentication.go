@@ -80,50 +80,58 @@ func initEnv() {
 // - 5: Check the "Application Claims" linked to the JWT
 // - 6: Both FunctionID and NamespaceID are injected via environment variables by Scaleway
 // ---  so we have to check the authenticity of the incoming token by comparing the claims
-func Authenticate(req *http.Request) (err error) {
+func Authenticate(w http.ResponseWriter, r *http.Request) error {
 	if isPublicFunction {
-		return
+		return nil
 	}
 
 	// Check that request holds an authentication token
-	requestToken := req.Header.Get("SCW-Functions-Token")
+	requestToken := r.Header.Get("SCW-Functions-Token")
 	if requestToken == "" {
-		requestToken = req.Header.Get("SCW_FUNCTIONS_TOKEN")
+		requestToken = r.Header.Get("SCW_FUNCTIONS_TOKEN")
 	}
 	if requestToken == "" {
+		http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
 		return errorEmptyRequestToken
 	}
 
 	if publicKey == nil {
+		http.Error(w, "function runtime not setup correctly", http.StatusInternalServerError)
 		return errorInvalidPublicKey
 	}
 
 	// Parse JWT and retrieve claims
 	claims := &Claims{}
-	_, err = jwt.ParseWithClaims(requestToken, claims, func(*jwt.Token) (interface{}, error) {
+	_, err := jwt.ParseWithClaims(requestToken, claims, func(*jwt.Token) (interface{}, error) {
 		return publicKey, nil
 	})
 	if err != nil {
-		return
+		http.Error(w, "authorization token not valid", http.StatusUnauthorized)
+		return err
 	}
 
 	if len(claims.ApplicationsClaims) == 0 {
+		http.Error(w, "authorization token not valid", http.StatusUnauthorized)
 		return errorInvalidClaims
 	} else if len(claims.ApplicationsClaims) > 1 {
 		log.Println("token with more claims than expected - please upgrade your runtime")
+		http.Error(w, "authorization token not valid", http.StatusUnauthorized)
 		return errorInvalidClaims
 	}
 	applicationClaims := claims.ApplicationsClaims[0]
 
 	if applicationID == "" {
+		http.Error(w, http.StatusText(http.StatusForbidden), http.StatusForbidden)
 		return errorInvalidApplication
 	} else if namespaceID == "" {
+		http.Error(w, http.StatusText(http.StatusForbidden), http.StatusForbidden)
 		return errorInvalidNamespace
 	}
 
 	// Check that the token's claims match with the injected Application or Namespace ID (depending on the scope of the token)
 	if applicationClaims.NamespaceID != namespaceID && applicationClaims.ApplicationID != applicationID {
-		err = errorInvalidClaims
+		http.Error(w, http.StatusText(http.StatusForbidden), http.StatusForbidden)
+		return errorInvalidClaims
 	}
-	return
+	return nil
 }

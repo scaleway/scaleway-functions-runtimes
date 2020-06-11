@@ -102,9 +102,8 @@ func buildRequestHandler() (func(http.ResponseWriter, *http.Request), error) {
 		log.Print("Function Triggered")
 		// 1: Authenticate
 		// Authenticate function, if an error occurs, do not execute the handler
-		if err := authentication.Authenticate(request); err != nil {
+		if err := authentication.Authenticate(response, request); err != nil {
 			log.Print(err)
-			http.NotFound(response, request) // NOTE: why not found? should be a proper middleware and handle 401/403
 			return
 		}
 
@@ -125,11 +124,11 @@ func buildRequestHandler() (func(http.ResponseWriter, *http.Request), error) {
 
 		// 4: Execute Handler Based on runtime
 		handlerResponse, err := fnInvoker.Execute(event, context)
-		defer handlerResponse.Close()
 		if err != nil {
 			http.Error(response, err.Error(), http.StatusInternalServerError)
 			return
 		}
+		defer handlerResponse.Close()
 
 		// Do not try to format HTTP response if trigger is NOT of type HTTP (would be pointless as nobody is waiting for the response)
 		if triggerType != events.TriggerTypeHTTP {
