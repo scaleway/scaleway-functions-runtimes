@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"github.com/scaleway/functions-runtime/events"
 	"io"
 	"io/ioutil"
 	"log"
@@ -14,6 +13,8 @@ import (
 	"os/signal"
 	"syscall"
 	"time"
+
+	"github.com/scaleway/functions-runtime/events"
 )
 
 const (
@@ -21,16 +22,16 @@ const (
 )
 
 // CoreRuntimeRequest - Structure for a request from core runtime to sub-runtime with event, context, and handler informations to dynamically import
-type CoreRuntimeRequest struct{
-	Event interface{} `json:"event"`
-	Context events.ExecutionContext `json:"context"`
-	HandlerName string `json:"handlerName"`
-	HandlerPath string `json:"handlerPath"`
+type CoreRuntimeRequest struct {
+	Event       interface{}             `json:"event"`
+	Context     events.ExecutionContext `json:"context"`
+	HandlerName string                  `json:"handlerName"`
+	HandlerPath string                  `json:"handlerPath"`
 }
 
 // FunctionInvoker - In charge of running sub-runtime processes, and invoke it with all the necessary informations
 // to bootstrap the language-specific wrapper to run function handlers
-type FunctionInvoker struct{
+type FunctionInvoker struct {
 	RuntimeBridge   string
 	RuntimeBinary   string
 	HandlerFilePath string
@@ -69,7 +70,7 @@ func NewInvoker(runtimeBinaryPath, runtimeBridgePath, handlerFilePath, handlerNa
 func (fn *FunctionInvoker) Start() error {
 	var cmd *exec.Cmd
 	// If Handler is a binary file, execute binary instead of bridge, and only pass event/context instead of full handler file/name
-	if fn.IsBinary{
+	if fn.IsBinary {
 		cmd = exec.Command(fn.HandlerFilePath)
 	} else {
 		cmd = exec.Command(fn.RuntimeBinary, fn.RuntimeBridge)
@@ -77,8 +78,8 @@ func (fn *FunctionInvoker) Start() error {
 
 	var (
 		stdoutPipe io.ReadCloser
-		stdinErr error
-		stdoutErr error
+		stdinErr   error
+		stdoutErr  error
 	)
 
 	_, stdinErr = cmd.StdinPipe()
@@ -118,32 +119,31 @@ func (fn *FunctionInvoker) Start() error {
 }
 
 // Execute - a given function handler, and handle response
-func (fn *FunctionInvoker) Execute(event interface{}, context events.ExecutionContext) (string, error) {
+func (fn *FunctionInvoker) Execute(event interface{}, context events.ExecutionContext) (io.ReadCloser, error) {
 	reqBody := CoreRuntimeRequest{
-		Event: event,
-		Context: context,
+		Event:       event,
+		Context:     context,
 		HandlerName: fn.HandlerName,
 		HandlerPath: fn.HandlerFilePath,
 	}
 
 	res, err := fn.streamRequest(reqBody)
 	if err != nil {
-		return "", err
-	}
-
-	responseBody, err := ioutil.ReadAll(res.Body)
-	if err != nil {
-		log.Printf("Read response body error, %v", err)
-		return "", err
+		return nil, err
 	}
 
 	// If an error occured in sub-runtime
 	if res.StatusCode == http.StatusInternalServerError {
+		responseBody, err := ioutil.ReadAll(res.Body)
+		if err != nil {
+			log.Printf("Read response body error, %v", err)
+			return nil, err
+		}
 		// Error message is the response body
-		return "", handlerExecutionError(string(responseBody))
+		return nil, handlerExecutionError(string(responseBody))
 	}
 
-	return string(responseBody), nil
+	return res.Body, nil
 }
 
 func (fn FunctionInvoker) streamRequest(reqBody CoreRuntimeRequest) (res *http.Response, err error) {
@@ -170,7 +170,7 @@ func (fn FunctionInvoker) streamRequest(reqBody CoreRuntimeRequest) (res *http.R
 
 	// An error occured
 	if !done {
-		return nil, fmt.Errorf("too many retries, sub-runtime server did not come up in %v seconds", retryInterval / 1000 * 200)
+		return nil, fmt.Errorf("too many retries, sub-runtime server did not come up in %v seconds", retryInterval/1000*200)
 	}
 	return
 }
