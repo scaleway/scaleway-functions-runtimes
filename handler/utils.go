@@ -8,9 +8,10 @@ import (
 
 // ResponseHTTP - Type for HTTP triggers response emitted by function handlers
 type ResponseHTTP struct {
-	StatusCode int               `json:"statusCode"`
-	Body       json.RawMessage   `json:"body"`
-	Headers    map[string]string `json:"headers"`
+	StatusCode      int               `json:"statusCode"`
+	Body            json.RawMessage   `json:"body"`
+	Headers         map[string]string `json:"headers"`
+	IsBase64Encoded bool              `json:"isBase64Encoded"`
 }
 
 // GetResponse - Transform a response string into an HTTP Response structure

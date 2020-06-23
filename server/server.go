@@ -1,6 +1,7 @@
 package server
 
 import (
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -149,8 +150,26 @@ func buildRequestHandler() (func(http.ResponseWriter, *http.Request), error) {
 			response.Header().Set(key, value)
 		}
 
+		responseBody := handlerRes.Body
+		// If user's handler specifies the parameter isBase64Encoded, we need to transform base64 response to byte array
+		if handlerRes.IsBase64Encoded {
+			var s string
+			if err := json.Unmarshal(responseBody, &s); err != nil {
+				http.Error(response, err.Error(), http.StatusInternalServerError)
+				return
+			}
+
+			base64Binary, err := base64.StdEncoding.DecodeString(s)
+			if err != nil {
+				http.Error(response, err.Error(), http.StatusInternalServerError)
+				return
+			}
+
+			responseBody = base64Binary
+		}
+
 		response.WriteHeader(handlerRes.StatusCode)
-		passHandlerResponse(response, handlerRes.Body)
+		passHandlerResponse(response, responseBody)
 	}, nil
 }
 
