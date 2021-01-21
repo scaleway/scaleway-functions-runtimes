@@ -1,4 +1,4 @@
-FROM rg.fr-par.scw.cloud/scwserverlessruntimes/core:v1.2.2 AS build-env
+FROM rg.fr-par.scw.cloud/scwserverlessruntimes/core:v1.2.5 AS build-env
 LABEL intermediate=true
 
 FROM rg.fr-par.scw.cloud/scwserverlessruntimeslib/python:3.7-alpine

@@ -3,6 +3,7 @@ package handler
 import (
 	"encoding/json"
 	"io"
+	"io/ioutil"
 	"net/http"
 )
 
@@ -17,8 +18,17 @@ type ResponseHTTP struct {
 // GetResponse - Transform a response string into an HTTP Response structure
 func GetResponse(response io.Reader) (*ResponseHTTP, error) {
 	handlerResponse := &ResponseHTTP{}
-	if err := json.NewDecoder(response).Decode(handlerResponse); err != nil {
+
+	// Read body content
+	bodyBytes, err := ioutil.ReadAll(response)
+	if err != nil {
 		return nil, ErrorInvalidHTTPResponseFormat
+	}
+
+	err = json.Unmarshal(bodyBytes, &handlerResponse)
+	if err != nil {
+		// Body is not a valid JSON object
+		handlerResponse.Body = bodyBytes
 	}
 
 	// If handler dit not return status code, just use 200 OK

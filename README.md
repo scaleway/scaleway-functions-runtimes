@@ -19,7 +19,7 @@ We decided to split the logic in 2 components because we wanted to handle the co
 - Manages Handler's responses based on trigger-type (for example, HTTP requires function handlers to return an HTTP response while CRON jobs do not require any of it).
 
 **At the moment, we only support the following runtimes** ([see the corresponsing sub-runtimes](./runtimes)):
-- Node.js version 8 and version 10
+- Node.js version 8, version 10 and version 14
 - Python version 2.7 and version 3.7
 - Golang version 1.11+
 
@@ -125,7 +125,7 @@ When the Core-runtime receives an HTTP request, it will transform it into a usab
     export SCW_RUNTIME_BRIDGE=/home/app/index.js
     export SCW_HANDLER_PATH=/home/app/function/handler
     export SCW_HANDLER_NAME=handle
-    export SCW_UPSTREAM_HOST=127.0.0.1
+    export SCW_UPSTREAM_HOST=http://127.0.0.1
     export SCW_UPSTREAM_PORT=8081
     # PORT used by core runtime to serve HTTP server
     export PORT=8080
@@ -134,12 +134,27 @@ When the Core-runtime receives an HTTP request, it will transform it into a usab
     ```
 - I can run my [core-runtime](./main.go):
   ```bash
+  sudo -s
   go run main.go
   ```
 - I can trigger my function:
   ```bash
   curl localhost:8080
   ```
+
+##### Python
+
+    ```bash
+    export SCW_RUNTIME_BINARY=/bin/sh
+    export SCW_RUNTIME_BRIDGE=/runtimes/python3/bootup.sh
+    export SCW_HANDLER_PATH=/home/app/function/handler
+    export SCW_HANDLER_NAME=handle
+    export SCW_UPSTREAM_HOST=http://127.0.0.1
+    export SCW_UPSTREAM_PORT=8081
+    export PORT=8080
+    export SCW_PUBLIC=true
+    export SCW_HANDLER_IS_BINARY=false
+    ```
 
 ### Specific Instructions for compiled languages
 

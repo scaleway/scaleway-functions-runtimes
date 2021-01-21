@@ -1,4 +1,4 @@
-FROM rg.fr-par.scw.cloud/scwfunctionsruntimes/python-dep3:v1.1.0
+FROM rg.fr-par.scw.cloud/scwfunctionsruntimes/python-dep3:v1.2.5
 
 RUN mkdir -p /home/app
 

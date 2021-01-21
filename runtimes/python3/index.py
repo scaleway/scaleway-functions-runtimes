@@ -16,8 +16,9 @@ def import_function_handler(file_path, handler_name):
         module = import_module(module_name)
         return getattr(module, handler_name)
     except Exception as e:
+        print(e)
         # Raise exception with custom error message for UX
-        raise Exception('Function Handler does not exist, check that you provided the right HANDLER parameter (path to your module with exported function to use)')
+        raise Exception('Function Handler does not exist, check that you provided the right HANDLER parameter (path to your module with exported function to use), check your function logs')
 
 # -- Set up runtime --
 app = Flask(__name__)
