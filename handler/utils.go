@@ -2,7 +2,6 @@ package handler
 
 import (
 	"encoding/json"
-	"fmt"
 	"io"
 	"io/ioutil"
 	"net/http"
@@ -36,8 +35,6 @@ func GetResponse(response io.Reader) (*ResponseHTTP, error) {
 	if unmarshalErr != nil || handlerResponse.StatusCode == nil {
 		handlerResponse.StatusCode = &httpStatusOK
 		handlerResponse.Body = bodyBytes
-	} else {
-		fmt.Println("ok")
 	}
 
 	return handlerResponse, nil
