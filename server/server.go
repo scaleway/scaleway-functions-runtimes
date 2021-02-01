@@ -168,7 +168,7 @@ func buildRequestHandler() (func(http.ResponseWriter, *http.Request), error) {
 			responseBody = base64Binary
 		}
 
-		response.WriteHeader(handlerRes.StatusCode)
+		response.WriteHeader(*handlerRes.StatusCode)
 		passHandlerResponse(response, responseBody)
 	}, nil
 }

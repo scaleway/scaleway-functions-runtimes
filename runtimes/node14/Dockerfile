@@ -2,7 +2,7 @@ FROM rg.fr-par.scw.cloud/scwserverlessruntimes/core:v1.2.5 AS runtime
 LABEL intermediate=true
 
 # Build step, build TypeScript files into JavaScript
-FROM rg.fr-par.scw.cloud/scwserverlessruntimeslib/node:10.12.0-alpine as build
+FROM node:14.15.4-alpine as build
 
 WORKDIR /home/app
 
@@ -16,7 +16,7 @@ COPY src ./src
 RUN npm run build
 
 # Run Step, prepare the environment for the function runtime running in production
-FROM rg.fr-par.scw.cloud/scwserverlessruntimeslib/node:10.12.0-alpine
+FROM node:14.15.4-alpine
 
 RUN apk add libc6-compat
 

@@ -1,4 +1,4 @@
-FROM rg.fr-par.scw.cloud/scwserverlessruntimes/core:v1.2.2 AS runtime
+FROM rg.fr-par.scw.cloud/scwserverlessruntimes/core:v1.2.5 AS runtime
 LABEL intermediate=true
 
 # Build step, build TypeScript files into JavaScript

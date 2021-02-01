@@ -19,6 +19,9 @@ app.disable('x-powered-by');
  * @param {Object|string} functionResult - Result retrieved from customer => Function handler's execution
  */
 const handleResponse = (res: express.Response, functionResult: any) => {
+    if (typeof functionResult === "number") {
+        functionResult = functionResult.toString();
+    }
     return res.status(200).send(functionResult);
 };
 
@@ -61,7 +64,7 @@ const functionGateway = async (req: express.Request, res: express.Response) => {
     try {
         const functionResult = await handler(req.body.event, req.body.context, callback);
         // Response has been sent via Callback
-        if (responseSent || !functionResult) return;
+        if (responseSent) return;
         return handleResponse(res, functionResult);
     } catch (err) {
         return res.status(500).send(err.message);
@@ -75,4 +78,4 @@ const port = process.env.SCW_UPSTREAM_PORT || 8081;
 
 app.listen(port, () => {
     console.log(`Scaleway Node.js listening on port: ${port}`)
-})
+});
