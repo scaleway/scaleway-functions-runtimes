@@ -1,0 +1,13 @@
+FROM rg.fr-par.scw.cloud/scwserverlessruntimes/core:v1.2.5 AS build-env
+LABEL intermediate=true
+
+FROM rg.fr-par.scw.cloud/scwserverlessruntimeslib/python:3.9-alpine
+
+RUN mkdir -p /home/app
+WORKDIR /home/app
+COPY --from=build-env /home/app /home/app
+
+RUN echo "http://dl-8.alpinelinux.org/alpine/edge/community" >> /etc/apk/repositories
+RUN apk  update \
+    && apk --no-cache add gcc gfortran python python-dev py-pip build-base wget freetype-dev libpng-dev openblas-dev libffi-dev openssl-dev
+RUN ln -s /usr/include/locale.h /usr/include/xlocale.h
