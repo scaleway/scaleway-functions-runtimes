@@ -20,6 +20,7 @@ const (
 	defaultUpstreamHost = "http://127.0.0.1"
 	defaultUpstreamPort = 8081
 	headerTriggerType   = "SCW_TRIGGER_TYPE"
+	payloadMaxSize      = 6291456
 )
 
 // Configure function Invoker from environment variables
@@ -108,14 +109,26 @@ func buildRequestHandler() (func(http.ResponseWriter, *http.Request), error) {
 			return
 		}
 
-		// 2: Check event publisher
+		// 2: check payload size
+		defaultPayloadMaxSizeEnv := os.Getenv("SCW_PAYLOAD_MAX_SIZE")
+		defaultPayloadMaxSize, err := strconv.ParseInt(defaultPayloadMaxSizeEnv, 10, 64)
+		if err != nil {
+			defaultPayloadMaxSize = int64(payloadMaxSize)
+		}
+
+		if request.ContentLength > defaultPayloadMaxSize {
+			http.Error(response, handler.ErrorPayloadTooLarge.Error(), http.StatusRequestEntityTooLarge)
+			return
+		}
+
+		// 3: Check event publisher
 		triggerType, err := events.GetTriggerType(request.Header.Get(headerTriggerType))
 		if err != nil {
 			http.Error(response, err.Error(), http.StatusBadRequest)
 			return
 		}
 
-		// 3: Format event and context
+		// 4: Format event and context
 		event, err := events.FormatEvent(request, triggerType)
 		if err != nil {
 			http.Error(response, err.Error(), http.StatusInternalServerError)
@@ -123,7 +136,7 @@ func buildRequestHandler() (func(http.ResponseWriter, *http.Request), error) {
 		}
 		context := events.GetExecutionContext()
 
-		// 4: Execute Handler Based on runtime
+		// 5: Execute Handler Based on runtime
 		handlerResponse, err := fnInvoker.Execute(event, context)
 		if err != nil {
 			http.Error(response, err.Error(), http.StatusInternalServerError)
@@ -137,14 +150,14 @@ func buildRequestHandler() (func(http.ResponseWriter, *http.Request), error) {
 			return
 		}
 
-		// 5: Get statusCode, response body, and headers
+		// 6: Get statusCode, response body, and headers
 		handlerRes, err := handler.GetResponse(handlerResponse)
 		if err != nil {
 			http.Error(response, err.Error(), http.StatusInternalServerError)
 			return
 		}
 
-		// 6: Send HTTP response with Handler
+		// 7: Send HTTP response with Handler
 		// Set Headers
 		for key, value := range handlerRes.Headers {
 			response.Header().Set(key, value)
