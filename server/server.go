@@ -117,7 +117,7 @@ func buildRequestHandler() (func(http.ResponseWriter, *http.Request), error) {
 		}
 
 		if request.ContentLength > defaultPayloadMaxSize {
-			http.Error(response, handler.ErrorPayloadTooLarge.Error(), http.StatusRequestEntityTooLarge)
+			http.Error(response, ErrorPayloadTooLarge.Error(), http.StatusRequestEntityTooLarge)
 			return
 		}
 
