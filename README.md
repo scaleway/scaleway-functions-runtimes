@@ -111,6 +111,7 @@ In order to configure `core-runtime` to use your "Language Specific Runtime", yo
 | SCW_HANDLER_PATH | Absolute path to your handler file (e.g. `/home/app/function/handler` or `/home/app/function/handler.js`) |
 | SCW_RUNTIME_BINARY | Absolute path to the binary of the language you wish to use to execute your runtime (e.g. `/usr/local/bin/node` or `/usr/local/bin/python`) |
 | SCW_RUNTIME_BRIDGE | Absolute Path to your custom-runtime entrypoint (e.g. `/home/app/myruntime.js`) |
+| SCW_PAYLOAD_MAX_SIZE | Max payload size permitted in bytes (e.g. `"62914560"`) default to 6M |
 
 This Core-runtime will take care of executing `$SCW_RUNTIME_BINARY $SCW_RUNTIME_BRIDGE` (e.g. `/usr/local/bin/node /home/app/myruntime.js`) to start the sub-runtime HTTP server.
 
